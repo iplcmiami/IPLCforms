@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IPLC Forms - PDF Form Management System
+
+A comprehensive PDF form management system built with Next.js 14 and Cloudflare Pages. Design PDF forms occasionally using pdfme, then fill, AI-summarize, and print them repeatedly.
+
+## Features
+
+- **PDF Form Designer**: Create and design PDF forms using pdfme library
+- **Form Filling**: Fill out forms with a user-friendly interface
+- **AI Summarization**: Automatically summarize form content using OpenAI API
+- **Print Management**: Print filled forms with professional formatting
+- **Admin Authentication**: Secure admin access with cookie-based authentication
+- **Database Storage**: Store forms and data using Cloudflare D1 database
+
+## Technology Stack
+
+- **Framework**: Next.js 14 with App Router and TypeScript
+- **PDF Library**: pdfme (@pdfme/ui, @pdfme/generator)
+- **Database**: Cloudflare D1
+- **Deployment**: Cloudflare Pages with Functions
+- **AI Integration**: OpenAI API (gpt-4o-mini)
+- **Print Functionality**: react-to-print and html2pdf.js
+- **Styling**: Tailwind CSS
+- **Authentication**: Cookie-based middleware
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ and npm
+- Cloudflare account with Pages and D1 enabled
+- OpenAI API key
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/iplcmiami/iplcforms.git
+cd iplcforms
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+# Edit .env.local with your API keys and configuration
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Run the development server:
+```bash
+npm run dev
+```
 
-## Learn More
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project is configured for deployment on Cloudflare Pages with Functions:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run build
+wrangler pages deploy dist
+```
 
-## Deploy on Vercel
+## Database Schema
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The project uses Cloudflare D1 database with the following tables:
+- `forms`: Store form templates and metadata
+- `submissions`: Store form submissions and data
+- `users`: Manage admin users and authentication
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+
+This project is maintained by IPLC Miami. For issues or contributions, please contact info@iplcmiami.com.
+
+## License
+
+Private project - All rights reserved.
