@@ -1,0 +1,16 @@
+name = "iplcforms"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "iplcforms"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "iplcforms"
+database_id = "a484d14e-fa44-48b1-a590-bd0b29aa3593"
+
+[vars]
+ENVIRONMENT = "production"
+OPENAI_API_KEY = "your-openai-api-key-here"
