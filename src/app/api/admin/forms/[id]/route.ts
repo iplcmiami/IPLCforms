@@ -14,7 +14,7 @@ interface RouteContext {
 
 // Helper function to verify admin authentication
 async function verifyAdminAuth(request: NextRequest, env: Env): Promise<boolean> {
-  const sessionToken = request.cookies.get('admin_session')?.value;
+  const sessionToken = request.cookies.get('admin-token')?.value;
   
   if (!sessionToken) {
     return false;

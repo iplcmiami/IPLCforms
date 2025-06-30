@@ -4,10 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, type Env } from '@/lib/db';
+import { DatabaseHelpers, type Env } from '@/lib/db';
 
 // Configure Edge Runtime for Cloudflare Pages
 export const runtime = "edge";
+
+interface CloudflareRequest extends NextRequest {
+  env?: Env;
+}
 
 interface FormSubmissionRequest {
   formId: string;
@@ -47,12 +51,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get database instance
-    const env = process.env as unknown as Env;
-    const db = getDatabase(env);
+    // Get database instance from Cloudflare binding
+    const env = (request as CloudflareRequest).env;
+    
+    if (!env?.DB) {
+      console.error('Database binding not found');
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+
+    const dbHelpers = new DatabaseHelpers(env.DB);
 
     // Check if the form exists
-    const existingForm = await db.getFormById(formIdNum);
+    const existingForm = await dbHelpers.getFormById(formIdNum);
     if (!existingForm) {
       return NextResponse.json(
         { error: 'Form not found' },
@@ -61,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the submission
-    const submissionId = await db.createSubmission(formIdNum, {
+    const submissionId = await dbHelpers.createSubmission(formIdNum, {
       formData: data,
       submittedAt: submittedAt,
       timestamp: new Date().toISOString()
