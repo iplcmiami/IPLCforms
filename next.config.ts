@@ -1,7 +1,6 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Remove invalid experimental.runtime configuration
   typescript: {
     // Temporarily ignore build errors during development
     ignoreBuildErrors: false,
@@ -11,13 +10,11 @@ const nextConfig: NextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: false,
   },
-  // Cloudflare Workers specific configuration
+  // Cloudflare Pages configuration
   trailingSlash: false,
   images: {
     unoptimized: true
-  },
-  // Output standalone for serverless deployment (confirmed valid by Next.js docs)
-  output: 'standalone'
+  }
 }
 
 export default nextConfig
