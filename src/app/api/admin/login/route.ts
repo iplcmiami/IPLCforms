@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DatabaseHelpers, Env } from '../../../../lib/db';
 import crypto from 'crypto';
 
+// Configure Edge Runtime for Cloudflare Pages
+export const runtime = "edge";
+
 // Type for Cloudflare Pages Functions request
 interface CloudflareRequest extends NextRequest {
   env?: Env;

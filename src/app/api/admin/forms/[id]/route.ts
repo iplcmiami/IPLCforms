@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DatabaseHelpers, Env } from '@/lib/db';
 
+// Configure Edge Runtime for Cloudflare Pages
+export const runtime = "edge";
+
 interface CloudflareRequest extends NextRequest {
   env: Env;
 }

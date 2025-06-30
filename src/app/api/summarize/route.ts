@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+// Configure Edge Runtime for Cloudflare Pages
+export const runtime = "edge";
+
 export async function POST(request: NextRequest) {
   try {
     // Initialize OpenAI client at runtime when environment variables are available

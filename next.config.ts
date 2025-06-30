@@ -1,7 +1,14 @@
-import type { NextConfig } from 'next'
+import { setupDevPlatform } from '@cloudflare/next-on-pages/next-dev';
+import type { NextConfig } from 'next';
+
+// Here we use the @cloudflare/next-on-pages next-dev module to allow us to use bindings during local development
+// (when running the application with `next dev`), for more information see:
+// https://github.com/cloudflare/next-on-pages/blob/main/internal-packages/next-dev/README.md
+if (process.env.NODE_ENV === 'development') {
+  await setupDevPlatform();
+}
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   typescript: {
     // Temporarily ignore build errors during development
     ignoreBuildErrors: false,
@@ -16,6 +23,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true
   }
-}
+};
 
-export default nextConfig
+export default nextConfig;

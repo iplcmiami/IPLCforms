@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase, type Env } from '@/lib/db';
 
+// Configure Edge Runtime for Cloudflare Pages
+export const runtime = "edge";
+
 interface FormSubmissionRequest {
   formId: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
