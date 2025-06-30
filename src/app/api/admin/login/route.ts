@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DatabaseHelpers, Env } from '../../../../lib/db';
-import crypto from 'crypto';
 
 // Configure Edge Runtime for Cloudflare Pages
 export const runtime = "edge";
@@ -54,8 +53,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate session token
-    const sessionId = crypto.randomBytes(32).toString('hex');
+    // Generate session token using Web Crypto API (Edge Runtime compatible)
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    const sessionId = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
 
     // Create session in database
