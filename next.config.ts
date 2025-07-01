@@ -4,7 +4,7 @@ import type { NextConfig } from 'next';
 // Initialize OpenNext Cloudflare for local development
 // This allows us to use Cloudflare bindings during local development
 if (process.env.NODE_ENV === 'development') {
-  await initOpenNextCloudflareForDev();
+  initOpenNextCloudflareForDev().catch(console.error);
 }
 
 const nextConfig: NextConfig = {

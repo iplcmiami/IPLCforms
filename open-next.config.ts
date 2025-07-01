@@ -8,10 +8,6 @@ const config: OpenNextConfig = {
   }),
   edgeExternals: [
     "node:crypto",
-    "@pdfme/generator",
-    "@pdfme/common",
-    "@pdfme/schemas",
-    "@pdfme/ui",
     "html2pdf.js",
     "react-to-print"
   ]

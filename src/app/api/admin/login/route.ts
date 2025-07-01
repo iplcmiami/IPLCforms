@@ -5,11 +5,11 @@ import { signCookie } from '@/lib/cookie-utils';
 
 export async function POST(request: NextRequest) {
   try {
-    const { password } = await request.json();
+    const { username, password } = await request.json();
 
-    if (!password) {
+    if (!username || !password) {
       return NextResponse.json(
-        { error: 'Password is required' },
+        { error: 'Username and password are required' },
         { status: 400 }
       );
     }
@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
     // Get database instance using centralized database utility
     const dbHelpers = getDatabase();
 
-    // Get admin user by username
-    const adminUser = await dbHelpers.getAdminByUsername('admin');
+    // Get admin user by username from request
+    const adminUser = await dbHelpers.getAdminByUsername(username);
 
     if (!adminUser) {
       return NextResponse.json(

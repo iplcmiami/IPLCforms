@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="mt-4 text-center text-xs text-gray-500">
-          <p>Default credentials: admin / demo123</p>
+          <p>Default credentials: iplcmiami@gmail.com / Iplc2353!</p>
         </div>
       </div>
     </div>

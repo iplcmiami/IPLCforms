@@ -1,12 +1,9 @@
 name = "iplcforms"
-main = ".open-next/worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare Workers with OpenNext configuration
-[assets]
-directory = ".open-next/assets"
-binding = "ASSETS"
+# Cloudflare Pages configuration
+pages_build_output_dir = ".vercel/output/static"
 
 [[d1_databases]]
 binding = "DB"

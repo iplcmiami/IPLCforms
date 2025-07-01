@@ -46,6 +46,12 @@ project_analysis.json
 # Cloudflare build artifacts
 .open-next/
 
-# Wrangler dev vars
+# Wrangler dev vars and local state
 .dev.vars
+.wrangler/
+
+# Temporary files and scripts
+generate-hashes.js
+generate-hashes.mjs
+
 Cloudflare Workers PDF Generation Replacement and IPLCforms Improvements.pdf
