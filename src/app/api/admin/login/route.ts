@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseHelpers, Env } from '../../../../lib/db';
-
-// Configure Edge Runtime for Cloudflare Pages
-export const runtime = "edge";
-
-// Type for Cloudflare Pages Functions request
-interface CloudflareRequest extends NextRequest {
-  env?: Env;
-}
+import { getDatabase } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,19 +12,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get database instance from Cloudflare binding
-    // In Cloudflare Pages Functions, env is available on the request object
-    const env = (request as CloudflareRequest).env;
-    
-    if (!env?.DB) {
-      console.error('Database binding not found');
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      );
-    }
-
-    const dbHelpers = new DatabaseHelpers(env.DB);
+    // Get database instance using centralized database utility
+    const dbHelpers = getDatabase();
 
     // Get admin user by username
     const adminUser = await dbHelpers.getAdminByUsername('admin');

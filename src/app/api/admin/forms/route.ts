@@ -4,14 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseHelpers, Env } from '@/lib/db';
-
-// Configure Edge Runtime for Cloudflare Pages
-export const runtime = "edge";
-
-interface CloudflareRequest extends NextRequest {
-  env: Env;
-}
+import { getDatabase } from '@/lib/db';
 
 interface TemplateData {
   schemas?: unknown[];
@@ -25,14 +18,9 @@ interface RequestBody {
 }
 
 // GET /api/admin/forms - List all forms
-export async function GET(request: CloudflareRequest) {
+export async function GET() {
   try {
-    const db = request.env?.DB;
-    if (!db) {
-      return NextResponse.json({ error: 'Database not available' }, { status: 500 });
-    }
-
-    const dbHelpers = new DatabaseHelpers(db);
+    const dbHelpers = getDatabase();
     const forms = await dbHelpers.getAllForms();
 
     return NextResponse.json({ forms });
@@ -46,13 +34,8 @@ export async function GET(request: CloudflareRequest) {
 }
 
 // POST /api/admin/forms - Create a new form
-export async function POST(request: CloudflareRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const db = request.env?.DB;
-    if (!db) {
-      return NextResponse.json({ error: 'Database not available' }, { status: 500 });
-    }
-
     const body: RequestBody = await request.json();
     
     if (!body.name || !body.name.trim()) {
@@ -70,7 +53,7 @@ export async function POST(request: CloudflareRequest) {
       );
     }
 
-    const dbHelpers = new DatabaseHelpers(db);
+    const dbHelpers = getDatabase();
     
     // Create the form with proper template_data structure
     const templateData = {

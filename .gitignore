@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Project analysis (contains sensitive research data)
+project_analysis.json
+
+# Cloudflare build artifacts
+.open-next/
+
+# Wrangler dev vars
+.dev.vars

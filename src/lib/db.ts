@@ -235,17 +235,29 @@ export class DatabaseHelpers {
   }
 }
 
-// Helper function to get database instance from environment
-export function getDatabase(env: Env): DatabaseHelpers {
-  if (!env.DB) {
-    throw new Error('Database binding not found. Make sure D1 database is properly configured.');
-  }
-  return new DatabaseHelpers(env.DB);
-}
+// Import OpenNext Cloudflare context
+// Import OpenNext Cloudflare context
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 // Environment interface for Cloudflare bindings
 export interface Env {
   DB: D1Database;
   OPENAI_API_KEY: string;
   ADMIN_COOKIE_SECRET: string;
+}
+
+// Helper function to get database instance from Cloudflare context
+export function getDatabase(): DatabaseHelpers {
+  const { env } = getCloudflareContext();
+  const typedEnv = env as Env;
+  if (!typedEnv.DB) {
+    throw new Error('Database binding not found. Make sure D1 database is properly configured.');
+  }
+  return new DatabaseHelpers(typedEnv.DB);
+}
+
+// Helper function to get environment from Cloudflare context
+export function getEnv(): Env {
+  const { env } = getCloudflareContext();
+  return env as Env;
 }

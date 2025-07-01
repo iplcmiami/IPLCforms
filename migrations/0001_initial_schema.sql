@@ -15,7 +15,7 @@ CREATE TABLE forms (
 CREATE TABLE submissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     form_id INTEGER NOT NULL,
-    submission_data TEXT NOT NULL, -- JSON string of form field values
+    form_data TEXT NOT NULL, -- JSON string of form field values
     pdf_url TEXT, -- URL to generated PDF
     ai_summary TEXT, -- AI-generated summary
     submitted_by TEXT,

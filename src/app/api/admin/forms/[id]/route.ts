@@ -1,36 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseHelpers, Env } from '@/lib/db';
-
-// Configure Edge Runtime for Cloudflare Pages
-export const runtime = "edge";
-
-interface CloudflareRequest extends NextRequest {
-  env: Env;
-}
+import { getDatabase } from '@/lib/db';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 // Helper function to verify admin authentication
-async function verifyAdminAuth(request: NextRequest, env: Env): Promise<boolean> {
+async function verifyAdminAuth(request: NextRequest): Promise<boolean> {
   const sessionToken = request.cookies.get('admin-token')?.value;
   
   if (!sessionToken) {
     return false;
   }
 
-  const dbHelpers = new DatabaseHelpers(env.DB);
+  const dbHelpers = getDatabase();
   const session = await dbHelpers.getSession(sessionToken);
   
   return !!session && new Date(session.expires_at) > new Date();
 }
 
 // GET /api/admin/forms/[id] - Get a specific form
-export async function GET(request: CloudflareRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     // Verify admin authentication
-    if (!await verifyAdminAuth(request, request.env)) {
+    if (!await verifyAdminAuth(request)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -47,7 +40,7 @@ export async function GET(request: CloudflareRequest, context: RouteContext) {
       );
     }
 
-    const dbHelpers = new DatabaseHelpers(request.env.DB);
+    const dbHelpers = getDatabase();
     const form = await dbHelpers.getFormById(formId);
 
     if (!form) {
@@ -69,10 +62,10 @@ export async function GET(request: CloudflareRequest, context: RouteContext) {
 }
 
 // PUT /api/admin/forms/[id] - Update a specific form
-export async function PUT(request: CloudflareRequest, context: RouteContext) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     // Verify admin authentication
-    if (!await verifyAdminAuth(request, request.env)) {
+    if (!await verifyAdminAuth(request)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -106,7 +99,7 @@ export async function PUT(request: CloudflareRequest, context: RouteContext) {
       );
     }
 
-    const dbHelpers = new DatabaseHelpers(request.env.DB);
+    const dbHelpers = getDatabase();
     
     // Check if form exists
     const existingForm = await dbHelpers.getFormById(formId);
@@ -154,10 +147,10 @@ export async function PUT(request: CloudflareRequest, context: RouteContext) {
 }
 
 // DELETE /api/admin/forms/[id] - Delete a specific form
-export async function DELETE(request: CloudflareRequest, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     // Verify admin authentication
-    if (!await verifyAdminAuth(request, request.env)) {
+    if (!await verifyAdminAuth(request)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -174,7 +167,7 @@ export async function DELETE(request: CloudflareRequest, context: RouteContext) 
       );
     }
 
-    const dbHelpers = new DatabaseHelpers(request.env.DB);
+    const dbHelpers = getDatabase();
     
     // Check if form exists
     const existingForm = await dbHelpers.getFormById(formId);
