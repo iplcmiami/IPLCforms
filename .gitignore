@@ -43,6 +43,9 @@ next-env.d.ts
 # Project analysis (contains sensitive research data)
 project_analysis.json
 
+# Project documentation (contains sensitive project details, secrets, and API keys)
+project-documentation.json
+
 # Cloudflare build artifacts
 .open-next/
 

@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
 import { requireAdmin } from '@/middleware/auth';
 
+export const runtime = 'edge';
+
 interface TemplateData {
   schemas?: unknown[];
   basePdf?: string;

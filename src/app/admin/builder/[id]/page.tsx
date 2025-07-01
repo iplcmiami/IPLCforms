@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PDFTemplateDesigner from '@/components/PDFTemplateDesigner';
 
+export const runtime = 'edge';
+
 interface Form {
   id: number;
   name: string;

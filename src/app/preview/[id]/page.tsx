@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import PDFViewer from '@/components/PDFViewer';
 
+export const runtime = 'edge';
+
 interface FieldSchema {
   name: string;
   type: 'text' | 'number' | 'email' | 'date' | 'textarea' | 'checkbox';

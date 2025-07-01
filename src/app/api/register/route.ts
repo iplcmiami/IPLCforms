@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
-import { hashSync } from 'bcrypt-edge';
+import { hashSync } from '@edge-utils/bcrypt';
 import { signCookie } from '@/lib/cookie-utils';
 
 export const runtime = 'edge';

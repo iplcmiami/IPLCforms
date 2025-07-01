@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { notFound, useRouter } from 'next/navigation';
 import PDFFormRenderer from '../../../components/PDFFormRenderer';
 
+export const runtime = 'edge';
+
 interface FieldSchema {
   name: string;
   type: 'text' | 'number' | 'email' | 'date' | 'textarea' | 'checkbox';
