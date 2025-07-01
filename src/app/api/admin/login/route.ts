@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
-import { compareSync } from '@edge-utils/bcrypt';
+import { comparePassword } from '@/lib/password-utils';
 import { signCookie } from '@/lib/cookie-utils';
 
 export const runtime = 'edge';
@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use bcrypt-edge to compare password with hashed password
-    const isPasswordValid = compareSync(password, adminUser.password_hash);
+    // Use Web Crypto API to compare password with hashed password
+    const isPasswordValid = await comparePassword(password, adminUser.password_hash);
     
     if (!isPasswordValid) {
       return NextResponse.json(

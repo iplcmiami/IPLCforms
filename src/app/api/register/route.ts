@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
-import { hashSync } from '@edge-utils/bcrypt';
+import { hashPassword } from '@/lib/password-utils';
 import { signCookie } from '@/lib/cookie-utils';
 
 export const runtime = 'edge';
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash the password
-    const passwordHash = hashSync(password, 10);
+    const passwordHash = await hashPassword(password);
 
     // Create the user
     const userId = await dbHelpers.createUser(username, passwordHash);

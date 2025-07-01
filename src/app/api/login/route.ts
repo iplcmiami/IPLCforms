@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
-import { compareSync } from '@edge-utils/bcrypt';
+import { comparePassword } from '@/lib/password-utils';
 import { signCookie } from '@/lib/cookie-utils';
 
 export const runtime = 'edge';
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
-    const isPasswordValid = compareSync(password, user.password_hash);
+    const isPasswordValid = await comparePassword(password, user.password_hash);
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: 'Invalid username or password' },

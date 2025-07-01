@@ -15,7 +15,6 @@
     "@opennextjs/cloudflare": "^1.3.1",
     "@types/js-cookie": "^3.0.6",
     "@types/uuid": "^10.0.0",
-    "@edge-utils/bcrypt": "^0.3.0",
     "html2pdf.js": "^0.10.3",
     "js-cookie": "^3.0.5",
     "next": "^15.3.4",
