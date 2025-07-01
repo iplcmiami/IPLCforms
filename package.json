@@ -12,7 +12,9 @@
     "deploy": "npm run pages:build && wrangler pages deploy"
   },
   "dependencies": {
+    "@pdfme/common": "^5.4.0",
     "@pdfme/generator": "^5.4.0",
+    "@pdfme/schemas": "^5.4.0",
     "@pdfme/ui": "^5.2.16",
     "@types/js-cookie": "^3.0.6",
     "@types/uuid": "^10.0.0",
