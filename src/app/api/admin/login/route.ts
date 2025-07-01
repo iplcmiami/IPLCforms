@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { compareSync } from 'bcrypt-edge';
+import { signCookie } from '@/lib/cookie-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,23 +27,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simple password comparison (in production, you'd use proper hashing)
-    // For now, we'll assume password is stored as plain text for simplicity
-    if (adminUser.password_hash !== password) {
+    // Use bcrypt-edge to compare password with hashed password
+    const isPasswordValid = compareSync(password, adminUser.password_hash);
+    
+    if (!isPasswordValid) {
       return NextResponse.json(
         { error: 'Invalid password' },
         { status: 401 }
       );
     }
 
-    // Generate session token using Web Crypto API (Edge Runtime compatible)
-    const randomBytes = new Uint8Array(32);
-    crypto.getRandomValues(randomBytes);
-    const sessionId = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    // Generate session token using crypto.randomUUID()
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
 
     // Create session in database
-    const sessionCreated = await dbHelpers.createSession(adminUser.id, sessionId, expiresAt);
+    const sessionCreated = await dbHelpers.createSession(adminUser.id, 'admin', sessionToken, expiresAt);
 
     if (!sessionCreated) {
       return NextResponse.json(
@@ -50,15 +51,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sign the session token
+    const signedToken = await signCookie(sessionToken);
+
     // Create response with session cookie
     const response = NextResponse.json({ success: true });
 
-    // Set HTTP-only cookie with session token
-    response.cookies.set('admin-token', sessionId, {
+    // Set signed session cookie
+    response.cookies.set('session', signedToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // Always use secure in Cloudflare Workers
       sameSite: 'strict',
-      maxAge: 24 * 60 * 60, // 24 hours
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/'
     });
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AdminLoginPage() {
+export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,7 +17,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,8 +32,8 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // Redirect to admin dashboard after successful login
-      router.push('/admin');
+      // Redirect to home page after successful login
+      router.push('/');
     } catch {
       setError('An error occurred during login');
     } finally {
@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Admin Login</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center">User Login</h1>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -90,15 +90,17 @@ export default function AdminLoginPage() {
 
         <div className="mt-6 text-center text-sm">
           <p className="text-gray-600">
-            Not an admin?{' '}
-            <Link href="/login" className="text-blue-600 hover:underline">
-              User login
+            Don&apos;t have an account?{' '}
+            <Link href="/register" className="text-blue-600 hover:underline">
+              Register here
             </Link>
           </p>
-        </div>
-
-        <div className="mt-4 text-center text-xs text-gray-500">
-          <p>Default credentials: admin / demo123</p>
+          <p className="mt-2 text-gray-600">
+            Admin?{' '}
+            <Link href="/admin/login" className="text-blue-600 hover:underline">
+              Login here
+            </Link>
+          </p>
         </div>
       </div>
     </div>

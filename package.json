@@ -9,20 +9,18 @@
     "lint": "next lint",
     "workers:build": "npx @opennextjs/cloudflare build",
     "preview": "npm run workers:build && wrangler dev",
-    "deploy": "npm run workers:build && wrangler deploy"
+    "deploy": "npm run workers:build && wrangler pages deploy"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.3.1",
-    "@pdfme/common": "^5.4.0",
-    "@pdfme/generator": "^5.4.0",
-    "@pdfme/schemas": "^5.4.0",
-    "@pdfme/ui": "^5.2.16",
     "@types/js-cookie": "^3.0.6",
     "@types/uuid": "^10.0.0",
+    "bcrypt-edge": "^0.1.1",
     "html2pdf.js": "^0.10.3",
     "js-cookie": "^3.0.5",
     "next": "^15.3.4",
     "openai": "^5.8.2",
+    "pdf-lib": "^1.17.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-to-print": "^3.1.1",

@@ -1,33 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { requireAdmin } from '@/middleware/auth';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
-}
-
-// Helper function to verify admin authentication
-async function verifyAdminAuth(request: NextRequest): Promise<boolean> {
-  const sessionToken = request.cookies.get('admin-token')?.value;
-  
-  if (!sessionToken) {
-    return false;
-  }
-
-  const dbHelpers = getDatabase();
-  const session = await dbHelpers.getSession(sessionToken);
-  
-  return !!session && new Date(session.expires_at) > new Date();
 }
 
 // GET /api/admin/forms/[id] - Get a specific form
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     // Verify admin authentication
-    if (!await verifyAdminAuth(request)) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await requireAdmin(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
 
     const { id } = await context.params;
@@ -65,11 +50,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     // Verify admin authentication
-    if (!await verifyAdminAuth(request)) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await requireAdmin(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
 
     const { id } = await context.params;
@@ -150,11 +133,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     // Verify admin authentication
-    if (!await verifyAdminAuth(request)) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await requireAdmin(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
 
     const { id } = await context.params;

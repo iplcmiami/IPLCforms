@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Designer } from '@pdfme/ui';
+import PDFTemplateDesigner from '@/components/PDFTemplateDesigner';
 
 interface Form {
   id: number;
@@ -12,11 +12,24 @@ interface Form {
   updated_at: string;
 }
 
-// Use flexible types to work with pdfme's complex type system
-interface TemplateData {
-  schemas: unknown[][];
-  basePdf?: unknown;
-  sampledata?: unknown[];
+// Field schema interface
+interface FieldSchema {
+  name: string;
+  type: 'text' | 'number' | 'email' | 'date' | 'textarea' | 'checkbox';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize?: number;
+  required?: boolean;
+  placeholder?: string;
+}
+
+// Template data structure
+interface Template {
+  schemas: FieldSchema[][];
+  basePdf?: string;
+  sampledata?: Record<string, unknown>[];
 }
 
 export default function FormBuilderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,8 +38,7 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [templateData, setTemplateData] = useState<TemplateData>({ schemas: [] });
-  const [designerInstance, setDesignerInstance] = useState<Designer | null>(null);
+  const [template, setTemplate] = useState<Template>({ schemas: [] });
 
   // Unwrap params
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
@@ -41,6 +53,13 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
     const loadForm = async () => {
       try {
         const response = await fetch(`/api/admin/forms/${resolvedParams.id}`);
+        
+        // Check for authentication
+        if (response.status === 401) {
+          router.push('/admin/login');
+          return;
+        }
+        
         if (!response.ok) {
           if (response.status === 404) {
             setError('Form not found');
@@ -54,17 +73,17 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
         setForm(formData);
 
         // Parse template data
-        let parsedTemplateData: TemplateData = { schemas: [] };
+        let parsedTemplate: Template = { schemas: [] };
         try {
           if (formData.template_data) {
-            parsedTemplateData = JSON.parse(formData.template_data);
+            parsedTemplate = JSON.parse(formData.template_data);
           }
         } catch (e) {
           console.error('Error parsing template data:', e);
-          parsedTemplateData = { schemas: [] };
+          parsedTemplate = { schemas: [] };
         }
 
-        setTemplateData(parsedTemplateData);
+        setTemplate(parsedTemplate);
       } catch (error) {
         console.error('Error loading form:', error);
         setError('Failed to load form');
@@ -74,64 +93,16 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
     };
 
     loadForm();
-  }, [resolvedParams]);
+  }, [resolvedParams, router]);
 
-  useEffect(() => {
-    if (!form || !resolvedParams) return;
-
-    // Initialize pdfme Designer
-    const container = document.getElementById('pdfme-container');
-    if (!container) return;
-
-    // Clear any existing designer
-    container.innerHTML = '';
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const designer = new Designer({
-        domContainer: container,
-        template: templateData.schemas.length > 0 ? {
-          schemas: templateData.schemas,
-          basePdf: templateData.basePdf || '',
-          sampledata: templateData.sampledata || [{}]
-        } as any : { // eslint-disable-line @typescript-eslint/no-explicit-any
-          schemas: [{}],
-          basePdf: '',
-          sampledata: [{}]
-        } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-        options: {
-          theme: {
-            token: {
-              colorPrimary: '#3B82F6'
-            }
-          }
-        }
-      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-      setDesignerInstance(designer);
-    } catch (error) {
-      console.error('Error initializing pdfme Designer:', error);
-      setError('Failed to initialize form designer');
-    }
-
-    // Cleanup function
-    return () => {
-      if (container) {
-        container.innerHTML = '';
-      }
-    };
-  }, [form, templateData, resolvedParams]);
 
   const handleSave = async () => {
-    if (!designerInstance || !form || !resolvedParams) return;
+    if (!form || !resolvedParams) return;
 
     setSaving(true);
     setError('');
 
     try {
-      // Get current template from designer
-      const currentTemplate = designerInstance.getTemplate();
-      
       const response = await fetch(`/api/admin/forms/${resolvedParams.id}`, {
         method: 'PUT',
         headers: {
@@ -139,9 +110,15 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
         },
         body: JSON.stringify({
           name: form.name,
-          template_data: currentTemplate
+          template_data: JSON.stringify(template)
         }),
       });
+
+      // Check for authentication
+      if (response.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to save form' }));
@@ -149,9 +126,8 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
       }
 
       // Update local state
-      const updatedTemplateData = JSON.stringify(currentTemplate);
+      const updatedTemplateData = JSON.stringify(template);
       setForm(prev => prev ? { ...prev, template_data: updatedTemplateData } : null);
-      setTemplateData(currentTemplate);
 
       // Show success message briefly
       const successMessage = document.createElement('div');
@@ -234,7 +210,7 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
               )}
               <button
                 onClick={handleSave}
-                disabled={saving || !designerInstance}
+                disabled={saving}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {saving ? (
@@ -269,14 +245,11 @@ export default function FormBuilderPage({ params }: { params: Promise<{ id: stri
             </ul>
           </div>
 
-          {/* pdfme Designer */}
-          <div 
-            id="pdfme-container"
-            className="w-full"
-            style={{ height: '70vh', minHeight: '600px' }}
-          >
-            {/* Designer will be rendered here */}
-          </div>
+          {/* PDF Template Designer */}
+          <PDFTemplateDesigner
+            initialTemplate={template}
+            onTemplateChange={setTemplate}
+          />
         </div>
       </div>
     </div>

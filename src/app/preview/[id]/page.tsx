@@ -1,20 +1,35 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Viewer } from '@pdfme/ui';
-import { generate } from '@pdfme/generator';
+import { useState, useEffect } from 'react';
 import { notFound } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
+import PDFViewer from '@/components/PDFViewer';
+
+interface FieldSchema {
+  name: string;
+  type: 'text' | 'number' | 'email' | 'date' | 'textarea' | 'checkbox';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize?: number;
+  required?: boolean;
+  placeholder?: string;
+}
+
+interface TemplateData {
+  schemas: FieldSchema[][];
+  basePdf?: string;
+  sampledata?: Record<string, unknown>[];
+}
 
 interface FormData {
   id: string;
   name: string;
   description: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schemas: any[];
+  schemas: FieldSchema[][];
   basePdf: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sampledata: any[];
+  sampledata: Record<string, unknown>[];
   created_at: string;
   updated_at: string;
 }
@@ -28,13 +43,7 @@ export default function PreviewPage({ params }: Props) {
   const [formData, setFormData] = useState<FormData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [inputs, setInputs] = useState<Record<string, any>[]>([]);
-  const viewerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const viewerInstance = useRef<any>(null);
+  const [formInputs, setFormInputs] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     async function loadForm() {
@@ -57,13 +66,14 @@ export default function PreviewPage({ params }: Props) {
         if (dataParam) {
           try {
             const parsedData = JSON.parse(dataParam);
-            setInputs(Array.isArray(parsedData) ? parsedData : [parsedData]);
+            const dataToUse = Array.isArray(parsedData) ? parsedData[0] : parsedData;
+            setFormInputs(dataToUse || {});
           } catch {
             // Fallback to sample data if parsing fails
-            setInputs(data.form.sampledata || [{}]);
+            setFormInputs(data.form.sampledata?.[0] || {});
           }
         } else {
-          setInputs(data.form.sampledata || [{}]);
+          setFormInputs(data.form.sampledata?.[0] || {});
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load form');
@@ -75,121 +85,35 @@ export default function PreviewPage({ params }: Props) {
     loadForm();
   }, [params, searchParams]);
 
-  useEffect(() => {
-    if (formData && viewerRef.current && formData.schemas.length > 0) {
-      // Clear any existing viewer instance
-      if (viewerInstance.current) {
-        viewerInstance.current = null;
-      }
-
-      const container = viewerRef.current;
-      container.innerHTML = '';
-
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const viewer = new Viewer({
-          domContainer: container,
-          template: {
-            schemas: formData.schemas,
-            basePdf: formData.basePdf || '',
-            sampledata: formData.sampledata || [{}]
-          } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-          inputs: inputs,
-          options: {
-            theme: {
-              token: {
-                colorPrimary: '#3B82F6'
-              }
-            }
-          }
-        } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-        viewerInstance.current = viewer;
-      } catch (err) {
-        console.error('Error initializing pdfme Viewer:', err);
-        setError('Failed to initialize preview interface');
-      }
-    }
-
-    return () => {
-      if (viewerInstance.current) {
-        viewerInstance.current = null;
-      }
-    };
-  }, [formData, inputs]);
-
-  const generatePDF = async () => {
-    if (!formData || !inputs.length) return;
-
-    setGenerating(true);
-    try {
-      const template = {
-        schemas: formData.schemas,
-        basePdf: formData.basePdf || '',
-        sampledata: formData.sampledata || [{}]
+  const handlePDFGenerated = (pdfBytes: Uint8Array) => {
+    // Create blob URL for the generated PDF
+    const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    
+    // Open PDF in new window for printing
+    const printWindow = window.open(url, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
       };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdf = await generate({ template: template as any, inputs });
-      
-      // Create blob URL for the generated PDF
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const blob = new Blob([pdf.buffer as any], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-    } catch (err) {
-      console.error('Error generating PDF:', err);
-      setError('Failed to generate PDF');
-    } finally {
-      setGenerating(false);
     }
   };
 
-  const downloadPDF = async () => {
-    if (!formData || !inputs.length) return;
-
-    try {
-      const template = {
-        schemas: formData.schemas,
-        basePdf: formData.basePdf || '',
-        sampledata: formData.sampledata || [{}]
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdf = await generate({ template: template as any, inputs });
-      
-      // Create download link
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const blob = new Blob([pdf.buffer as any], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${formData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Error downloading PDF:', err);
-      setError('Failed to download PDF');
-    }
-  };
-
-  const handlePrint = () => {
-    if (pdfUrl) {
-      const printWindow = window.open(pdfUrl, '_blank');
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
-    } else {
-      window.print();
-    }
+  const handlePDFDownload = (pdfBytes: Uint8Array, filename?: string) => {
+    // Create download link
+    const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || `${formData?.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleSummarize = async () => {
-    if (!formData || !inputs.length) return;
+    if (!formData || !Object.keys(formInputs).length) return;
 
     try {
       const response = await fetch('/api/summarize', {
@@ -199,7 +123,7 @@ export default function PreviewPage({ params }: Props) {
         },
         body: JSON.stringify({
           formName: formData.name,
-          formData: inputs[0] || {}
+          formData: formInputs
         }),
       });
 
@@ -250,6 +174,13 @@ export default function PreviewPage({ params }: Props) {
     return notFound();
   }
 
+  // Create template data for PDFViewer
+  const templateData: TemplateData = {
+    schemas: formData.schemas,
+    basePdf: formData.basePdf,
+    sampledata: formData.sampledata
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -266,29 +197,9 @@ export default function PreviewPage({ params }: Props) {
               <button
                 onClick={handleSummarize}
                 className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                disabled={!inputs.length}
+                disabled={!Object.keys(formInputs).length}
               >
                 AI Summary
-              </button>
-              <button
-                onClick={generatePDF}
-                disabled={generating || !inputs.length}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-              >
-                {generating ? 'Generating...' : 'Generate PDF'}
-              </button>
-              <button
-                onClick={downloadPDF}
-                disabled={!inputs.length}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                Download PDF
-              </button>
-              <button
-                onClick={handlePrint}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Print
               </button>
             </div>
           </div>
@@ -305,9 +216,9 @@ export default function PreviewPage({ params }: Props) {
               <div className="space-y-3 text-sm text-gray-600">
                 <p>Review your completed form:</p>
                 <ul className="space-y-2">
-                  <li>• Click &quot;Generate PDF&quot; to create a downloadable file</li>
-                  <li>• Use &quot;Download PDF&quot; to save to your device</li>
-                  <li>• Click &quot;Print&quot; to print the form</li>
+                  <li>• PDF is generated automatically below</li>
+                  <li>• Use download button in PDF viewer to save</li>
+                  <li>• Use print button in PDF viewer to print</li>
                   <li>• Try &quot;AI Summary&quot; to get an intelligent overview</li>
                 </ul>
                 <div className="mt-4 p-3 bg-green-50 rounded border-l-4 border-green-400">
@@ -319,11 +230,11 @@ export default function PreviewPage({ params }: Props) {
             </div>
 
             {/* Form Data Summary */}
-            {inputs.length > 0 && inputs[0] && Object.keys(inputs[0]).length > 0 && (
+            {Object.keys(formInputs).length > 0 && (
               <div className="bg-white p-6 rounded-lg shadow-sm border mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Form Data</h3>
                 <div className="space-y-2 text-sm">
-                  {Object.entries(inputs[0]).map(([key, value]) => (
+                  {Object.entries(formInputs).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
                       <span className="text-gray-600 capitalize">{key}:</span>
                       <span className="text-gray-900 font-medium">
@@ -340,10 +251,13 @@ export default function PreviewPage({ params }: Props) {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-sm border">
               {formData.schemas.length > 0 ? (
-                <div 
-                  ref={viewerRef} 
+                <PDFViewer
+                  template={templateData}
+                  data={formInputs}
+                  onGenerate={handlePDFGenerated}
+                  onDownload={handlePDFDownload}
                   className="w-full"
-                  style={{ minHeight: '600px' }}
+                  showControls={true}
                 />
               ) : (
                 <div className="flex items-center justify-center h-96">
@@ -360,20 +274,6 @@ export default function PreviewPage({ params }: Props) {
           </div>
         </div>
       </div>
-
-      {/* Generated PDF Display */}
-      {pdfUrl && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Generated PDF</h3>
-            <iframe
-              src={pdfUrl}
-              className="w-full h-96 border rounded"
-              title="Generated PDF Preview"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

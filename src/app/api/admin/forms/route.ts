@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { requireAdmin } from '@/middleware/auth';
 
 interface TemplateData {
   schemas?: unknown[];
@@ -18,8 +19,14 @@ interface RequestBody {
 }
 
 // GET /api/admin/forms - List all forms
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const dbHelpers = getDatabase();
     const forms = await dbHelpers.getAllForms();
 
@@ -36,6 +43,12 @@ export async function GET() {
 // POST /api/admin/forms - Create a new form
 export async function POST(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const body: RequestBody = await request.json();
     
     if (!body.name || !body.name.trim()) {

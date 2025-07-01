@@ -1,10 +1,12 @@
 /**
  * Form Submissions API
  * Handles saving form submissions to the database
+ * Requires authentication
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { requireAuth } from '@/middleware/auth';
 
 
 interface FormSubmissionRequest {
@@ -16,6 +18,18 @@ interface FormSubmissionRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const authResult = await requireAuth(request);
+    
+    // If authentication failed, return the error response
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+    
+    // Extract user information from auth context
+    const userId = authResult.userId;
+    const userType = authResult.userType;
+    
     // Parse request body
     const body: FormSubmissionRequest = await request.json();
     const { formId, data, submittedAt } = body;
@@ -27,6 +41,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Get database instance
+    const dbHelpers = getDatabase();
 
     // Validate formId is a valid number
     const formIdNum = parseInt(formId, 10);
@@ -45,9 +62,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get database instance
-    const dbHelpers = getDatabase();
-
     // Check if the form exists
     const existingForm = await dbHelpers.getFormById(formIdNum);
     if (!existingForm) {
@@ -57,12 +71,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the submission
-    const submissionId = await dbHelpers.createSubmission(formIdNum, {
-      formData: data,
-      submittedAt: submittedAt,
-      timestamp: new Date().toISOString()
-    });
+    // Create the submission with user tracking
+    const submissionId = await dbHelpers.createSubmission(
+      formIdNum,
+      {
+        formData: data,
+        submittedAt: submittedAt,
+        timestamp: new Date().toISOString()
+      },
+      userId,
+      userType
+    );
 
     return NextResponse.json(
       {

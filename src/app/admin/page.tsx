@@ -5,8 +5,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Form {
   id: number;
@@ -22,16 +23,18 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newFormName, setNewFormName] = useState('');
+  const router = useRouter();
 
-  // Load forms on component mount
-  useEffect(() => {
-    loadForms();
-  }, []);
-
-  const loadForms = async () => {
+  const checkAuthAndLoadForms = useCallback(async () => {
     try {
-      setLoading(true);
+      // First check if user is authenticated
       const response = await fetch('/api/admin/forms');
+      
+      if (response.status === 401) {
+        // Not authenticated, redirect to admin login
+        router.push('/admin/login');
+        return;
+      }
       
       if (!response.ok) {
         throw new Error('Failed to load forms');
@@ -43,6 +46,48 @@ export default function AdminDashboard() {
       setError(err instanceof Error ? err.message : 'Failed to load forms');
     } finally {
       setLoading(false);
+    }
+  }, [router]);
+
+  // Check authentication and load forms on component mount
+  useEffect(() => {
+    checkAuthAndLoadForms();
+  }, [checkAuthAndLoadForms]);
+
+  const loadForms = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/forms');
+      
+      if (response.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      
+      if (!response.ok) {
+        throw new Error('Failed to load forms');
+      }
+      
+      const data = await response.json();
+      setForms(data.forms);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load forms');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        router.push('/admin/login');
+      }
+    } catch (err) {
+      console.error('Logout failed:', err);
     }
   };
 
@@ -154,12 +199,12 @@ export default function AdminDashboard() {
               <p className="text-gray-600">Manage your PDF forms and templates</p>
             </div>
             <div className="flex space-x-4">
-              <Link
-                href="/admin/login"
-                className="text-gray-600 hover:text-gray-900"
+              <button
+                onClick={handleLogout}
+                className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-md hover:bg-gray-100"
               >
                 Logout
-              </Link>
+              </button>
             </div>
           </div>
         </div>

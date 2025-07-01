@@ -64,9 +64,18 @@ export interface AdminUser {
   created_at: string;
 }
 
+export interface User {
+  id: number;
+  username: string;
+  password_hash: string;
+  created_at: string;
+  is_active: boolean;
+}
+
 export interface Session {
   id: string;
   user_id: number;
+  user_type: 'admin' | 'user';
   expires_at: string;
   created_at: string;
 }
@@ -128,11 +137,11 @@ export class DatabaseHelpers {
   }
 
   // Submission operations
-  async createSubmission(formId: number, formData: object): Promise<number> {
+  async createSubmission(formId: number, formData: object, userId?: number, userType?: 'admin' | 'user'): Promise<number> {
     const result = await this.db.prepare(`
-      INSERT INTO submissions (form_id, form_data, created_at)
-      VALUES (?, ?, datetime('now'))
-    `).bind(formId, JSON.stringify(formData)).run();
+      INSERT INTO submissions (form_id, form_data, user_id, user_type, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).bind(formId, JSON.stringify(formData), userId || null, userType || null).run();
     
     return result.meta.last_row_id as number;
   }
@@ -189,6 +198,16 @@ export class DatabaseHelpers {
     return result as AdminUser | null;
   }
 
+  async getAdminById(userId: number): Promise<AdminUser | null> {
+    const result = await this.db.prepare(`
+      SELECT id, username, password_hash, created_at
+      FROM admin_users
+      WHERE id = ?
+    `).bind(userId).first();
+    
+    return result as AdminUser | null;
+  }
+
   async createAdmin(username: string, passwordHash: string): Promise<number> {
     const result = await this.db.prepare(`
       INSERT INTO admin_users (username, password_hash, created_at)
@@ -198,22 +217,62 @@ export class DatabaseHelpers {
     return result.meta.last_row_id as number;
   }
 
-  // Session operations
-  async createSession(userId: number, sessionId: string, expiresAt: string): Promise<boolean> {
+  // User operations
+  async getUserByUsername(username: string): Promise<User | null> {
     const result = await this.db.prepare(`
-      INSERT INTO sessions (id, user_id, expires_at, created_at)
-      VALUES (?, ?, ?, datetime('now'))
-    `).bind(sessionId, userId, expiresAt).run();
+      SELECT id, username, password_hash, created_at, is_active
+      FROM users
+      WHERE username = ?
+    `).bind(username).first();
+    
+    return result as User | null;
+  }
+
+  async getUserById(userId: number): Promise<User | null> {
+    const result = await this.db.prepare(`
+      SELECT id, username, password_hash, created_at, is_active
+      FROM users
+      WHERE id = ?
+    `).bind(userId).first();
+    
+    return result as User | null;
+  }
+
+  async createUser(username: string, passwordHash: string): Promise<number> {
+    const result = await this.db.prepare(`
+      INSERT INTO users (username, password_hash, created_at, is_active)
+      VALUES (?, ?, datetime('now'), 1)
+    `).bind(username, passwordHash).run();
+    
+    return result.meta.last_row_id as number;
+  }
+
+  async updateUserActiveStatus(userId: number, isActive: boolean): Promise<boolean> {
+    const result = await this.db.prepare(`
+      UPDATE users
+      SET is_active = ?
+      WHERE id = ?
+    `).bind(isActive ? 1 : 0, userId).run();
     
     return result.changes > 0;
   }
 
-  async getSession(sessionId: string): Promise<Session | null> {
+  // Session operations
+  async createSession(userId: number, userType: 'admin' | 'user', sessionId: string, expiresAt: string): Promise<boolean> {
     const result = await this.db.prepare(`
-      SELECT id, user_id, expires_at, created_at
+      INSERT INTO sessions (id, user_id, user_type, expires_at, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).bind(sessionId, userId, userType, expiresAt).run();
+    
+    return result.changes > 0;
+  }
+
+  async getSession(sessionToken: string): Promise<Session | null> {
+    const result = await this.db.prepare(`
+      SELECT id, user_id, user_type, expires_at, created_at
       FROM sessions
       WHERE id = ? AND expires_at > datetime('now')
-    `).bind(sessionId).first();
+    `).bind(sessionToken).first();
     
     return result as Session | null;
   }

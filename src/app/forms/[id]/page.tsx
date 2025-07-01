@@ -1,18 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Form } from '@pdfme/ui';
-import { notFound } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { notFound, useRouter } from 'next/navigation';
+import PDFFormRenderer from '../../../components/PDFFormRenderer';
+
+interface FieldSchema {
+  name: string;
+  type: 'text' | 'number' | 'email' | 'date' | 'textarea' | 'checkbox';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize?: number;
+  required?: boolean;
+  placeholder?: string;
+}
+
 
 interface FormData {
   id: string;
   name: string;
   description: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schemas: any[];
+  schemas: FieldSchema[][];
   basePdf: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sampledata: any[];
+  sampledata: Record<string, unknown>[];
   created_at: string;
   updated_at: string;
 }
@@ -21,21 +32,38 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+interface AuthInfo {
+  authenticated: boolean;
+  username?: string;
+  userType?: 'admin' | 'user';
+}
+
 export default function FormFillPage({ params }: Props) {
   const [formData, setFormData] = useState<FormData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [inputs, setInputs] = useState<Record<string, any>[]>([]);
-  const formRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const formInstance = useRef<any>(null);
+  const [inputs, setInputs] = useState<Record<string, unknown>[]>([]);
+  const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    async function loadForm() {
+    async function checkAuthAndLoadForm() {
       try {
+        // Check authentication first
+        const authResponse = await fetch('/api/auth/check');
+        
+        if (!authResponse.ok) {
+          // Not authenticated, redirect to login
+          router.push('/login');
+          return;
+        }
+
+        const authData = await authResponse.json();
+        setAuthInfo(authData);
+
+        // Now load the form
         const resolvedParams = await params;
         const response = await fetch(`/api/admin/forms/${resolvedParams.id}`);
         
@@ -50,8 +78,8 @@ export default function FormFillPage({ params }: Props) {
         setFormData(data.form);
         
         // Initialize inputs with sample data or empty objects
-        const initialInputs = data.form.sampledata && data.form.sampledata.length > 0 
-          ? [...data.form.sampledata] 
+        const initialInputs = data.form.sampledata && data.form.sampledata.length > 0
+          ? [...data.form.sampledata]
           : [{}];
         setInputs(initialInputs);
       } catch (err) {
@@ -61,70 +89,16 @@ export default function FormFillPage({ params }: Props) {
       }
     }
 
-    loadForm();
-  }, [params]);
+    checkAuthAndLoadForm();
+  }, [params, router]);
 
-  useEffect(() => {
-    if (formData && formRef.current && formData.schemas.length > 0) {
-      // Clear any existing form instance
-      if (formInstance.current) {
-        formInstance.current = null;
-      }
-
-      const container = formRef.current;
-      container.innerHTML = '';
-
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const form = new Form({
-          domContainer: container,
-          template: {
-            schemas: formData.schemas,
-            basePdf: formData.basePdf || '',
-            sampledata: formData.sampledata || [{}]
-          } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-          inputs: inputs,
-          options: {
-            theme: {
-              token: {
-                colorPrimary: '#3B82F6'
-              }
-            }
-          }
-        } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-        // Listen for input changes
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        form.onChangeInput = (callback: any) => {
-          if (typeof callback === 'function') {
-            callback(({ value, name }: { value: string; name: string }) => {
-              // Update inputs when form values change
-              setInputs(prevInputs => {
-                const newInputs = [...prevInputs];
-                if (newInputs[0]) {
-                  newInputs[0][name] = value;
-                } else {
-                  newInputs[0] = { [name]: value };
-                }
-                return newInputs;
-              });
-            });
-          }
-        };
-
-        formInstance.current = form;
-      } catch (err) {
-        console.error('Error initializing pdfme Form:', err);
-        setError('Failed to initialize form interface');
-      }
-    }
-
-    return () => {
-      if (formInstance.current) {
-        formInstance.current = null;
-      }
-    };
-  }, [formData, inputs]);
+  const handleFieldChange = (fieldName: string, value: unknown) => {
+    console.log('Field changed:', fieldName, value);
+    setInputs(prev => [{
+      ...prev[0],
+      [fieldName]: value
+    }]);
+  };
 
   const handleSave = async () => {
     if (!formData || !inputs.length) return;
@@ -174,6 +148,15 @@ export default function FormFillPage({ params }: Props) {
     window.open(`/preview/${formData.id}?${queryParams}`, '_blank');
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -219,27 +202,45 @@ export default function FormFillPage({ params }: Props) {
                 <p className="text-gray-600 mt-1">{formData.description}</p>
               )}
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handlePreview}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                disabled={!inputs.length}
-              >
-                Preview & Generate PDF
-              </button>
-              <button
-                onClick={handlePrint}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Print
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !inputs.length}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Save Draft'}
-              </button>
+            <div className="flex items-center gap-4">
+              {authInfo && (
+                <div className="text-sm text-gray-600">
+                  Logged in as <span className="font-medium">{authInfo.username}</span>
+                  {authInfo.userType === 'admin' && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                      Admin
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={handlePreview}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                  disabled={!inputs.length}
+                >
+                  Preview & Generate PDF
+                </button>
+                <button
+                  onClick={handlePrint}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Print
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !inputs.length}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Draft'}
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -286,10 +287,9 @@ export default function FormFillPage({ params }: Props) {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-sm border">
               {formData.schemas.length > 0 ? (
-                <div 
-                  ref={formRef} 
-                  className="w-full"
-                  style={{ minHeight: '600px' }}
+                <PDFFormRenderer
+                  template={formData}
+                  onFieldChange={handleFieldChange}
                 />
               ) : (
                 <div className="flex items-center justify-center h-96">

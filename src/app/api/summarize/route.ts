@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-
+import { getEnv } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    // Initialize OpenAI client at runtime when environment variables are available
+    // Get OpenAI API key from Cloudflare Workers bindings
+    const env = getEnv();
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: env.OPENAI_API_KEY,
     });
     const { formData, formTitle } = await request.json();
 
@@ -29,7 +30,7 @@ ${formDataText}
 Please format the summary as a brief paragraph that highlights the key information and purpose of this form submission. Keep it professional and suitable for administrative review.`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-nano',
       messages: [
         {
           role: 'system',
