@@ -1,10 +1,11 @@
 name = "iplcforms"
-compatibility_date = "2025-07-02"
+compatibility_date = "2024-12-31"
 pages_build_output_dir = ".vercel/output/static"
 
-# Enable Node polyfills for Pages compatibility
-compatibility_flags = ["nodejs_compat"]
+# Edge runtime compatibility - removed nodejs_compat for @cloudflare/next-on-pages
+# compatibility_flags = ["nodejs_compat"]
 
 [vars]
-NODE_VERSION = "20"
-NODE_ENV     = "production"
+# Removed Node.js specific variables for edge runtime compatibility
+# NODE_VERSION = "20"
+# NODE_ENV     = "production"
