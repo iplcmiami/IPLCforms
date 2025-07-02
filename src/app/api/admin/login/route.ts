@@ -3,6 +3,8 @@ import { getDatabase } from '@/lib/db';
 import { comparePassword } from '@/lib/password-utils';
 import { signCookie } from '@/lib/cookie-utils';
 
+export const runtime = 'edge';
+
 
 export async function POST(request: NextRequest) {
   try {

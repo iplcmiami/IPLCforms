@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '@/middleware/auth';
 import { getDatabase } from '@/lib/db';
 
+export const runtime = 'edge';
+
 
 export async function GET(request: NextRequest) {
   const session = await verifySession(request);

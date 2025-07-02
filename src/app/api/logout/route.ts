@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { getDatabase } from '@/lib/db';
 import { verifyCookie } from '@/lib/cookie-utils';
 
+export const runtime = 'edge';
+
 export async function POST() {
   try {
     const cookieStore = await cookies();
