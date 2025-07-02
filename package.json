@@ -9,7 +9,7 @@
     "lint": "next lint",
     "build:cloudflare": "npx @cloudflare/next-on-pages",
     "preview": "npx @cloudflare/next-on-pages && wrangler pages dev",
-    "deploy": "npx @cloudflare/next-on-pages && wrangler pages deploy"
+    "deploy": "npx @cloudflare/next-on-pages"
   },
   "dependencies": {
     "@cloudflare/next-on-pages": "^1",
