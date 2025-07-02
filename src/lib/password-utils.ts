@@ -1,7 +1,7 @@
 /**
  * Edge Runtime compatible password hashing utilities using Web Crypto API
- * Supports both bcrypt (legacy) and PBKDF2 (new) formats for migration compatibility
- * New passwords use PBKDF2, existing bcrypt passwords are verified using bcrypt-edge
+ * Uses PBKDF2 for all password hashing and verification
+ * Legacy bcrypt hashes are no longer supported in edge runtime
  */
 
 // Helper function to convert ArrayBuffer to hex string
@@ -65,21 +65,21 @@ export async function hashPassword(password: string): Promise<string> {
 
 /**
  * Compare a plain text password with a hashed password
- * Supports both bcrypt (legacy) and PBKDF2 (new) formats
+ * Only supports PBKDF2 format (salt:hash) for edge runtime compatibility
  * @param password - Plain text password to verify
- * @param hashedPassword - Previously hashed password (bcrypt or salt:hash format)
+ * @param hashedPassword - PBKDF2 hashed password in salt:hash format
  * @returns Promise<boolean> - True if password matches
  */
 export async function comparePassword(password: string, hashedPassword: string): Promise<boolean> {
   try {
-    // Detect hash format
+    // Check if this is a legacy bcrypt hash
     if (isBcryptHash(hashedPassword)) {
-      // Handle bcrypt format ($2a$10$... or $2b$10$...)
-      return await compareBcryptPassword(password, hashedPassword);
-    } else {
-      // Handle PBKDF2 format (salt:hash)
-      return await comparePBKDF2Password(password, hashedPassword);
+      console.error('Legacy bcrypt hashes are not supported in edge runtime. Please regenerate password hashes using PBKDF2.');
+      return false;
     }
+    
+    // Handle PBKDF2 format (salt:hash)
+    return await comparePBKDF2Password(password, hashedPassword);
   } catch (error) {
     console.error('Password comparison error:', error);
     return false;
@@ -96,24 +96,6 @@ function isBcryptHash(hash: string): boolean {
   return /^\$2[abxy]\$\d{2}\$.{53}$/.test(hash);
 }
 
-/**
- * Compare password using bcrypt-edge for legacy compatibility
- * @param password - Plain text password
- * @param hashedPassword - Bcrypt hash
- * @returns Promise<boolean> - True if password matches
- */
-async function compareBcryptPassword(password: string, hashedPassword: string): Promise<boolean> {
-  try {
-    // Dynamic import bcrypt-edge for Edge Runtime compatibility
-    const { compareSync } = await import('bcrypt-edge');
-    
-    // bcrypt-edge only provides synchronous functions, so we wrap in Promise.resolve
-    return Promise.resolve(compareSync(password, hashedPassword));
-  } catch (error) {
-    console.error('bcrypt-edge comparison error:', error);
-    return false;
-  }
-}
 
 /**
  * Compare password using PBKDF2
