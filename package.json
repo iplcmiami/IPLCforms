@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "opennextjs-cloudflare build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "build:cloudflare": "opennextjs-cloudflare build",
-    "preview": "npm run build:cloudflare && opennextjs-cloudflare preview",
-    "deploy": "npm run build:cloudflare && wrangler pages deploy .vercel/output/static --project-name iplcforms"
+    "preview": "opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.3.1",
