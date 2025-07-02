@@ -105,7 +105,7 @@ function isBcryptHash(hash: string): boolean {
 async function compareBcryptPassword(password: string, hashedPassword: string): Promise<boolean> {
   try {
     // Dynamic import bcrypt-edge for Edge Runtime compatibility
-    const { compareSync } = await import('bcryptjs');
+    const { compareSync } = await import('bcrypt-edge');
     
     // bcrypt-edge only provides synchronous functions, so we wrap in Promise.resolve
     return Promise.resolve(compareSync(password, hashedPassword));
