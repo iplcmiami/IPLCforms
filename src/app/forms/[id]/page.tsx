@@ -1,5 +1,7 @@
 'use client';
 
+export const runtime = 'edge';
+
 import { useState, useEffect } from 'react';
 import { notFound, useRouter } from 'next/navigation';
 import PDFFormRenderer from '../../../components/PDFFormRenderer';
