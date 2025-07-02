@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export const runtime = 'edge';
+
 
 export default function Home() {
   const router = useRouter();
