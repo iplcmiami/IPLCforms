@@ -12,25 +12,22 @@
     "deploy": "npx @cloudflare/next-on-pages"
   },
   "dependencies": {
-    "@cloudflare/next-on-pages": "^1",
     "@tailwindcss/postcss": "^4",
     "@types/js-cookie": "^3.0.6",
     "@types/uuid": "^10.0.0",
     "bcrypt-edge": "^0.1.1",
     "esbuild": "^0.20.0",
-    "html2pdf.js": "^0.10.3",
     "js-cookie": "^3.0.5",
     "next": "^15.3.4",
-    "openai": "^5.8.2",
     "pdf-lib": "^1.17.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-to-print": "^3.1.1",
     "tailwindcss": "^4",
     "uuid": "^11.1.0",
     "wrangler": "^4.22.0"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1",
     "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^18.3.1",
