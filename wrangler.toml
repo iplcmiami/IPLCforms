@@ -1,18 +1,10 @@
 name = "iplcforms"
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-07-02"
+pages_build_output_dir = ".vercel/output/static"   # <- REQUIRED for Pages
+
+# Enable Node polyfills that OpenNext expects
 compatibility_flags = ["nodejs_compat"]
 
-# OpenNext Cloudflare configuration
-main = ".open-next/worker.js"
-
-[assets]
-binding = "ASSETS"
-directory = ".open-next/assets"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "iplcforms"
-database_id = "a484d14e-fa44-48b1-a590-bd0b29aa3593"
-
 [vars]
-ENVIRONMENT = "production"
+NODE_VERSION = "20"
+NODE_ENV     = "production"

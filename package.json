@@ -16,6 +16,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/uuid": "^10.0.0",
     "bcrypt-edge": "^0.1.1",
+    "esbuild": "^0.20.0",
     "html2pdf.js": "^0.10.3",
     "js-cookie": "^3.0.5",
     "next": "^15.3.4",
