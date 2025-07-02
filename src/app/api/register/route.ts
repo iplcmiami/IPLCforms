@@ -3,8 +3,6 @@ import { getDatabase } from '@/lib/db';
 import { hashPassword } from '@/lib/password-utils';
 import { signCookie } from '@/lib/cookie-utils';
 
-export const runtime = 'edge';
-
 export async function POST(request: NextRequest) {
   const dbHelpers = getDatabase();
 

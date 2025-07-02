@@ -8,7 +8,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
 import { requireAuth } from '@/middleware/auth';
 
-export const runtime = 'edge';
 
 interface FormSubmissionRequest {
   formId: string;

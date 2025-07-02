@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/middleware/auth';
 import { getDatabase } from '@/lib/db';
 
-export const runtime = 'edge';
-
 // GET endpoint to list all forms
 export async function GET(request: NextRequest) {
   // Check authentication (both regular users and admins can access)
