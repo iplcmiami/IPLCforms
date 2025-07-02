@@ -7,12 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:cloudflare": "opennextjs-cloudflare build",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "build:cloudflare": "npx @cloudflare/next-on-pages",
+    "preview": "npx @cloudflare/next-on-pages && wrangler pages dev",
+    "deploy": "npx @cloudflare/next-on-pages && wrangler pages deploy"
   },
   "dependencies": {
-    "@opennextjs/cloudflare": "^1.3.1",
+    "@cloudflare/next-on-pages": "^1",
     "@tailwindcss/postcss": "^4",
     "@types/js-cookie": "^3.0.6",
     "@types/uuid": "^10.0.0",

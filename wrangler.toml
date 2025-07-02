@@ -1,8 +1,8 @@
 name = "iplcforms"
 compatibility_date = "2025-07-02"
-pages_build_output_dir = ".open-next/assets"
+pages_build_output_dir = ".vercel/output/static"
 
-# Enable Node polyfills that OpenNext expects
+# Enable Node polyfills for Pages compatibility
 compatibility_flags = ["nodejs_compat"]
 
 [vars]

@@ -294,9 +294,8 @@ export class DatabaseHelpers {
   }
 }
 
-// Import OpenNext Cloudflare context
-// Import OpenNext Cloudflare context
-import { getCloudflareContext } from '@opennextjs/cloudflare';
+// Import Cloudflare Pages context
+import { getRequestContext } from '@cloudflare/next-on-pages';
 
 // Environment interface for Cloudflare bindings
 export interface Env {
@@ -307,7 +306,7 @@ export interface Env {
 
 // Helper function to get database instance from Cloudflare context
 export function getDatabase(): DatabaseHelpers {
-  const { env } = getCloudflareContext();
+  const { env } = getRequestContext();
   const typedEnv = env as Env;
   if (!typedEnv.DB) {
     throw new Error('Database binding not found. Make sure D1 database is properly configured.');
@@ -317,6 +316,6 @@ export function getDatabase(): DatabaseHelpers {
 
 // Helper function to get environment from Cloudflare context
 export function getEnv(): Env {
-  const { env } = getCloudflareContext();
+  const { env } = getRequestContext();
   return env as Env;
 }

@@ -47,7 +47,6 @@ project_analysis.json
 project-documentation.json
 
 # Cloudflare build artifacts
-.open-next/
 
 # Wrangler dev vars and local state
 .dev.vars
