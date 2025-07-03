@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 export interface FieldSchema {
   name: string;
@@ -47,7 +45,18 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
 
   // Generate PDF with form data using html2pdf.js
   const generatePDF = useCallback(async (): Promise<Uint8Array> => {
+    // Ensure we're running on the client side
+    if (typeof window === 'undefined') {
+      throw new Error('PDF generation is only available on the client side');
+    }
+
     try {
+      // Dynamically import PDF libraries on client side only
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
+
       // Create HTML content for each page
       const htmlPages = template.schemas.map((pageSchemas) => {
         const pageHTML = `

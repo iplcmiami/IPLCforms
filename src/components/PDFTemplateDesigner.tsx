@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface FieldSchema {
   name: string;
@@ -122,8 +120,19 @@ export default function PDFTemplateDesigner({
   const generatePreview = useCallback(async () => {
     if (!template.schemas.length) return;
     
+    // Ensure we're running on the client side
+    if (typeof window === 'undefined') {
+      console.error('PDF generation is only available on the client side');
+      return;
+    }
+    
     setIsGeneratingPreview(true);
     try {
+      // Dynamically import PDF libraries on client side only
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
       // Create HTML representation of all pages
       const htmlPages = template.schemas.map((pageSchemas, pageIndex) => {
         const fieldsHtml = pageSchemas.map(field => {
