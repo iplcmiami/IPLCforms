@@ -5,11 +5,11 @@ pages_build_output_dir = ".vercel/output/static"
 # Edge runtime compatibility - removed nodejs_compat for @cloudflare/next-on-pages
 # compatibility_flags = ["nodejs_compat"]
 
-# D1 Database binding (configure database_id in Cloudflare dashboard)
+# D1 Database binding
 [[d1_databases]]
 binding = "DB"
-database_name = "iplc-forms-db"
-database_id = "YOUR_D1_DATABASE_ID_HERE"
+database_name = "iplcforms"
+database_id = "a484d14e-fa44-48b1-a590-bd0b29aaa3593"
 
 [vars]
 # Environment variables (configure actual values in Cloudflare dashboard)
