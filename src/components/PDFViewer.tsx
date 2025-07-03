@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import html2pdf from 'html2pdf.js';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export interface FieldSchema {
   name: string;
@@ -145,34 +146,46 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
       document.body.appendChild(tempDiv);
 
       try {
-        // Configure html2pdf options
-        const options = {
-          margin: 0,
-          filename: 'form.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            width: 612, // 8.5 inches * 72 DPI
-            height: 792 // 11 inches * 72 DPI
-          },
-          jsPDF: {
-            unit: 'pt',
-            format: 'letter',
-            orientation: 'portrait'
-          }
-        };
+        // Generate canvas from HTML using html2canvas
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          width: 612, // 8.5 inches * 72 DPI
+          height: 792, // 11 inches * 72 DPI
+          allowTaint: false
+        });
 
-        // Generate PDF and get as Uint8Array
-        const pdfBlob = await html2pdf()
-          .set(options)
-          .from(tempDiv)
-          .outputPdf('blob');
+        // Create PDF using jsPDF
+        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+        const pdf = new jsPDF({
+          unit: 'pt',
+          format: 'letter',
+          orientation: 'portrait'
+        });
 
-        // Convert blob to Uint8Array
-        const arrayBuffer = await pdfBlob.arrayBuffer();
-        return new Uint8Array(arrayBuffer);
+        const imgWidth = 612; // Letter width in points
+        const pageHeight = 792; // Letter height in points
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+
+        let position = 0;
+
+        // Add first page
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        // Add additional pages if needed
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        // Convert PDF to Uint8Array
+        const pdfArrayBuffer = pdf.output('arraybuffer');
+        return new Uint8Array(pdfArrayBuffer);
 
       } finally {
         // Clean up temporary element

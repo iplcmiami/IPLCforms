@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import html2pdf from 'html2pdf.js';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface FieldSchema {
   name: string;
@@ -154,16 +155,41 @@ export default function PDFTemplateDesigner({
       tempDiv.style.top = '-9999px';
       document.body.appendChild(tempDiv);
 
-      // Generate PDF
-      const options = {
-        margin: 0,
-        filename: 'template-preview.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
+      // Generate PDF using jsPDF + html2canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false
+      });
 
-      await html2pdf().set(options).from(tempDiv).save();
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save('template-preview.pdf');
 
       // Cleanup
       document.body.removeChild(tempDiv);
