@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo } from 'react';
-import { PDFDocument } from 'pdf-lib';
+import { useState, useCallback, useRef } from 'react';
+import html2pdf from 'html2pdf.js';
 
 interface FieldSchema {
   name: string;
@@ -26,65 +26,26 @@ interface PDFTemplateDesignerProps {
   onTemplateChange?: (template: TemplateData) => void;
 }
 
-export default function PDFTemplateDesigner({ 
-  initialTemplate, 
-  onTemplateChange 
+export default function PDFTemplateDesigner({
+  initialTemplate,
+  onTemplateChange
 }: PDFTemplateDesignerProps) {
   const [template, setTemplate] = useState<TemplateData>(
     initialTemplate || { schemas: [[]], sampledata: [{}] }
   );
   const [selectedField, setSelectedField] = useState<FieldSchema | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [, setPdfUrl] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const designAreaRef = useRef<HTMLDivElement>(null);
 
-  const fieldTypes = useMemo(() => [
+  const fieldTypes = [
     { type: 'text', label: 'Text Input', icon: '📝' },
     { type: 'number', label: 'Number Input', icon: '🔢' },
     { type: 'email', label: 'Email Input', icon: '📧' },
     { type: 'date', label: 'Date Input', icon: '📅' },
     { type: 'textarea', label: 'Text Area', icon: '📄' },
     { type: 'checkbox', label: 'Checkbox', icon: '☑️' },
-  ] as const, []);
-
-  const handlePDFUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || file.type !== 'application/pdf') return;
-
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const base64String = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      const dataUrl = `data:application/pdf;base64,${base64String}`;
-      
-      setTemplate(prev => ({ ...prev, basePdf: base64String }));
-      setPdfUrl(dataUrl);
-      
-      // Create canvas preview of first page
-      const pdf = await PDFDocument.load(arrayBuffer);
-      const page = pdf.getPage(0);
-      const { width, height } = page.getSize();
-      
-      // Update canvas size to match PDF
-      if (canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        canvas.width = width * 0.5; // Scale down for UI
-        canvas.height = height * 0.5;
-        
-        if (ctx) {
-          ctx.fillStyle = '#f8f9fa';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.strokeStyle = '#dee2e6';
-          ctx.strokeRect(0, 0, canvas.width, canvas.height);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading PDF:', error);
-      alert('Failed to load PDF file');
-    }
-  }, []);
+  ] as const;
 
   const addField = useCallback((type: FieldSchema['type']) => {
     const newField: FieldSchema = {
@@ -101,275 +62,264 @@ export default function PDFTemplateDesigner({
 
     setTemplate(prev => {
       const newSchemas = [...prev.schemas];
-      if (newSchemas.length === 0) newSchemas.push([]);
-      newSchemas[0] = [...(newSchemas[0] || []), newField];
+      if (newSchemas.length <= currentPage) {
+        // Add pages if needed
+        for (let i = newSchemas.length; i <= currentPage; i++) {
+          newSchemas.push([]);
+        }
+      }
+      newSchemas[currentPage] = [...(newSchemas[currentPage] || []), newField];
       
       const updated = { ...prev, schemas: newSchemas };
       onTemplateChange?.(updated);
       return updated;
     });
-  }, [onTemplateChange]);
+  }, [currentPage, onTemplateChange]);
 
   const updateField = useCallback((updatedField: FieldSchema) => {
     setTemplate(prev => {
-      const newSchemas = prev.schemas.map(pageSchema => 
-        pageSchema.map(field => 
-          field.name === updatedField.name ? updatedField : field
-        )
-      );
+      const newSchemas = [...prev.schemas];
+      const pageFields = newSchemas[currentPage] || [];
+      const fieldIndex = pageFields.findIndex(f => f.name === updatedField.name);
+      
+      if (fieldIndex >= 0) {
+        newSchemas[currentPage] = [
+          ...pageFields.slice(0, fieldIndex),
+          updatedField,
+          ...pageFields.slice(fieldIndex + 1)
+        ];
+      }
       
       const updated = { ...prev, schemas: newSchemas };
       onTemplateChange?.(updated);
       return updated;
     });
     setSelectedField(updatedField);
-  }, [onTemplateChange]);
+  }, [currentPage, onTemplateChange]);
 
   const deleteField = useCallback((fieldName: string) => {
     setTemplate(prev => {
-      const newSchemas = prev.schemas.map(pageSchema => 
-        pageSchema.filter(field => field.name !== fieldName)
-      );
+      const newSchemas = [...prev.schemas];
+      newSchemas[currentPage] = (newSchemas[currentPage] || []).filter(f => f.name !== fieldName);
       
       const updated = { ...prev, schemas: newSchemas };
       onTemplateChange?.(updated);
       return updated;
     });
     setSelectedField(null);
-  }, [onTemplateChange]);
+  }, [currentPage, onTemplateChange]);
 
-  const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * 2; // Scale back up
-    const y = (event.clientY - rect.top) * 2;
-    
-    // Check if clicked on existing field
-    const clickedField = template.schemas[0]?.find(field => 
-      x >= field.x && x <= field.x + field.width &&
-      y >= field.y && y <= field.y + field.height
-    );
-    
-    setSelectedField(clickedField || null);
-  }, [template.schemas]);
-
-  const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!selectedField || !canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * 2;
-    const y = (event.clientY - rect.top) * 2;
-    
-    setIsDragging(true);
-    setDragOffset({
-      x: x - selectedField.x,
-      y: y - selectedField.y
+  const addPage = useCallback(() => {
+    setTemplate(prev => {
+      const updated = { ...prev, schemas: [...prev.schemas, []] };
+      onTemplateChange?.(updated);
+      return updated;
     });
-  }, [selectedField]);
+    setCurrentPage(template.schemas.length);
+  }, [template.schemas.length, onTemplateChange]);
 
-  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !selectedField || !canvasRef.current) return;
+  const generatePreview = useCallback(async () => {
+    if (!template.schemas.length) return;
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * 2;
-    const y = (event.clientY - rect.top) * 2;
-    
-    const updatedField = {
-      ...selectedField,
-      x: Math.max(0, x - dragOffset.x),
-      y: Math.max(0, y - dragOffset.y)
-    };
-    
-    updateField(updatedField);
-  }, [isDragging, selectedField, dragOffset, updateField]);
+    setIsGeneratingPreview(true);
+    try {
+      // Create HTML representation of all pages
+      const htmlPages = template.schemas.map((pageSchemas, pageIndex) => {
+        const fieldsHtml = pageSchemas.map(field => {
+          const baseStyle = `position: absolute; left: ${field.x}px; top: ${field.y}px; width: ${field.width}px; height: ${field.height}px; font-size: ${field.fontSize || 12}px; border: 1px solid #ccc; padding: 4px; box-sizing: border-box;`;
+          
+          switch (field.type) {
+            case 'checkbox':
+              return `<div style="${baseStyle} display: flex; align-items: center; justify-content: center; background: white;">☐</div>`;
+            case 'textarea':
+              return `<div style="${baseStyle} background: white; line-height: 1.4; overflow: hidden;">${field.placeholder || 'Textarea'}</div>`;
+            default:
+              return `<div style="${baseStyle} background: white; line-height: ${field.height}px; overflow: hidden;">${field.placeholder || field.type}</div>`;
+          }
+        }).join('');
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-  }, []);
+        return `
+          <div style="position: relative; width: 210mm; height: 297mm; background: white; margin: 0; padding: 20px; box-sizing: border-box; page-break-after: ${pageIndex < template.schemas.length - 1 ? 'always' : 'auto'};">
+            <h3 style="margin: 0 0 20px 0; font-size: 16px; color: #333;">Template Preview - Page ${pageIndex + 1}</h3>
+            ${fieldsHtml}
+          </div>
+        `;
+      }).join('');
 
-  // Render fields on canvas
-  const renderCanvas = useCallback(() => {
-    if (!canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Clear canvas
-    ctx.fillStyle = '#f8f9fa';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#dee2e6';
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw fields
-    template.schemas[0]?.forEach(field => {
-      const x = field.x * 0.5; // Scale down for display
-      const y = field.y * 0.5;
-      const width = field.width * 0.5;
-      const height = field.height * 0.5;
-      
-      // Draw field rectangle
-      ctx.fillStyle = selectedField?.name === field.name ? '#e3f2fd' : '#ffffff';
-      ctx.fillRect(x, y, width, height);
-      ctx.strokeStyle = selectedField?.name === field.name ? '#2196f3' : '#adb5bd';
-      ctx.lineWidth = selectedField?.name === field.name ? 2 : 1;
-      ctx.strokeRect(x, y, width, height);
-      
-      // Draw field label
-      ctx.fillStyle = '#495057';
-      ctx.font = '10px Arial';
-      ctx.fillText(field.name, x + 2, y - 2);
-      
-      // Draw field type icon
-      const typeInfo = fieldTypes.find(t => t.type === field.type);
-      if (typeInfo) {
-        ctx.font = '12px Arial';
-        ctx.fillText(typeInfo.icon, x + 2, y + height - 2);
-      }
-    });
-  }, [template.schemas, selectedField, fieldTypes]);
+      // Create temporary container
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlPages;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      document.body.appendChild(tempDiv);
 
-  // Re-render canvas when template changes
-  useState(() => {
-    renderCanvas();
-  });
+      // Generate PDF
+      const options = {
+        margin: 0,
+        filename: 'template-preview.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(options).from(tempDiv).save();
+
+      // Cleanup
+      document.body.removeChild(tempDiv);
+    } catch (error) {
+      console.error('Error generating preview:', error);
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  }, [template]);
+
+  const currentPageFields = template.schemas[currentPage] || [];
 
   return (
-    <div className="flex h-full">
-      {/* Field Palette */}
-      <div className="w-64 bg-white border-r border-gray-200 p-4">
-        <h3 className="text-lg font-semibold mb-4">Form Fields</h3>
-        
-        {/* PDF Upload */}
-        <div className="mb-6">
-          <input
-            type="file"
-            accept=".pdf"
-            ref={fileInputRef}
-            onChange={handlePDFUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
-          >
-            📎 Upload PDF Template
-          </button>
-        </div>
-        
-        {/* Field Types */}
+    <div className="flex h-full bg-gray-100">
+      {/* Sidebar - Field Types */}
+      <div className="w-64 bg-white border-r p-4">
+        <h3 className="font-semibold mb-4">Field Types</h3>
         <div className="space-y-2 mb-6">
           {fieldTypes.map((fieldType) => (
             <button
               key={fieldType.type}
-              onClick={() => addField(fieldType.type)}
-              className="w-full text-left p-2 rounded border border-gray-200 hover:bg-gray-50 text-sm"
+              onClick={() => addField(fieldType.type as FieldSchema['type'])}
+              className="w-full p-3 text-left border border-gray-200 rounded hover:bg-gray-50 flex items-center"
             >
               <span className="mr-2">{fieldType.icon}</span>
               {fieldType.label}
             </button>
           ))}
         </div>
-        
+
+        {/* Page Controls */}
+        <div className="border-t pt-4">
+          <h4 className="font-semibold mb-2">Pages</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <select
+              value={currentPage}
+              onChange={(e) => setCurrentPage(Number(e.target.value))}
+              className="flex-1 px-2 py-1 border rounded"
+            >
+              {template.schemas.map((_, index) => (
+                <option key={index} value={index}>Page {index + 1}</option>
+              ))}
+            </select>
+            <button
+              onClick={addPage}
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              +
+            </button>
+          </div>
+          
+          <button
+            onClick={generatePreview}
+            disabled={isGeneratingPreview || !currentPageFields.length}
+            className="w-full px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300"
+          >
+            {isGeneratingPreview ? 'Generating...' : 'Preview PDF'}
+          </button>
+        </div>
+
         {/* Field Properties */}
         {selectedField && (
-          <div className="space-y-3">
-            <h4 className="font-semibold text-sm">Field Properties</h4>
-            
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Field Name
-              </label>
+          <div className="border-t pt-4 mt-4">
+            <h4 className="font-semibold mb-2">Field Properties</h4>
+            <div className="space-y-2">
               <input
                 type="text"
                 value={selectedField.name}
                 onChange={(e) => updateField({ ...selectedField, name: e.target.value })}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                placeholder="Field name"
+                className="w-full px-2 py-1 border rounded"
               />
-            </div>
-            
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Placeholder
-              </label>
               <input
-                type="text"
-                value={selectedField.placeholder || ''}
-                onChange={(e) => updateField({ ...selectedField, placeholder: e.target.value })}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                type="number"
+                value={selectedField.x}
+                onChange={(e) => updateField({ ...selectedField, x: Number(e.target.value) })}
+                placeholder="X position"
+                className="w-full px-2 py-1 border rounded"
               />
+              <input
+                type="number"
+                value={selectedField.y}
+                onChange={(e) => updateField({ ...selectedField, y: Number(e.target.value) })}
+                placeholder="Y position"
+                className="w-full px-2 py-1 border rounded"
+              />
+              <input
+                type="number"
+                value={selectedField.width}
+                onChange={(e) => updateField({ ...selectedField, width: Number(e.target.value) })}
+                placeholder="Width"
+                className="w-full px-2 py-1 border rounded"
+              />
+              <input
+                type="number"
+                value={selectedField.height}
+                onChange={(e) => updateField({ ...selectedField, height: Number(e.target.value) })}
+                placeholder="Height"
+                className="w-full px-2 py-1 border rounded"
+              />
+              <button
+                onClick={() => deleteField(selectedField.name)}
+                className="w-full px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Delete Field
+              </button>
             </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Width
-                </label>
-                <input
-                  type="number"
-                  value={selectedField.width}
-                  onChange={(e) => updateField({ ...selectedField, width: Number(e.target.value) })}
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Height
-                </label>
-                <input
-                  type="number"
-                  value={selectedField.height}
-                  onChange={(e) => updateField({ ...selectedField, height: Number(e.target.value) })}
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="flex items-center text-xs">
-                <input
-                  type="checkbox"
-                  checked={selectedField.required || false}
-                  onChange={(e) => updateField({ ...selectedField, required: e.target.checked })}
-                  className="mr-2"
-                />
-                Required field
-              </label>
-            </div>
-            
-            <button
-              onClick={() => deleteField(selectedField.name)}
-              className="w-full bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700"
-            >
-              🗑️ Delete Field
-            </button>
           </div>
         )}
       </div>
-      
-      {/* Canvas Area */}
+
+      {/* Main Design Area */}
       <div className="flex-1 p-4">
-        <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-200 p-2 text-sm text-gray-600">
-            Design Area - Click to select fields, drag to move
+        <div className="bg-white rounded shadow-lg h-full">
+          <div className="p-4 border-b">
+            <h2 className="text-lg font-semibold">Template Designer - Page {currentPage + 1}</h2>
           </div>
-          <div className="p-4">
-            <canvas
-              ref={canvasRef}
-              width={600}
-              height={800}
-              onClick={handleCanvasClick}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              className="border border-gray-300 cursor-crosshair"
-              style={{ maxWidth: '100%', height: 'auto' }}
-            />
+          
+          <div
+            ref={designAreaRef}
+            className="relative bg-gray-50 m-4 rounded"
+            style={{ height: 'calc(100% - 80px)', minHeight: '600px' }}
+          >
+            {/* Design Canvas */}
+            <div className="relative w-full h-full bg-white border-2 border-dashed border-gray-300 overflow-auto">
+              {currentPageFields.map((field) => (
+                <div
+                  key={field.name}
+                  onClick={() => setSelectedField(field)}
+                  className={`absolute border-2 p-1 cursor-pointer ${
+                    selectedField?.name === field.name ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white'
+                  }`}
+                  style={{
+                    left: field.x,
+                    top: field.y,
+                    width: field.width,
+                    height: field.height,
+                    fontSize: field.fontSize || 12
+                  }}
+                >
+                  <span className="text-xs text-gray-600">
+                    {field.type === 'checkbox' ? '☐' : field.placeholder || field.name}
+                  </span>
+                </div>
+              ))}
+              
+              {/* Empty state */}
+              {currentPageFields.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <p className="text-lg mb-2">No fields on this page</p>
+                    <p className="text-sm">Click a field type from the sidebar to add it here</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

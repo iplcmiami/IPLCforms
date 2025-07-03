@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import html2pdf from 'html2pdf.js';
 
 export interface FieldSchema {
   name: string;
@@ -44,102 +44,141 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   const [generatedPdfBytes, setGeneratedPdfBytes] = useState<Uint8Array | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Generate PDF with form data
+  // Generate PDF with form data using html2pdf.js
   const generatePDF = useCallback(async (): Promise<Uint8Array> => {
     try {
-      let pdfDoc: PDFDocument;
+      // Create HTML content for each page
+      const htmlPages = template.schemas.map((pageSchemas) => {
+        const pageHTML = `
+          <div class="pdf-page" style="
+            width: 8.5in;
+            height: 11in;
+            position: relative;
+            background: white;
+            margin: 0;
+            padding: 0;
+            page-break-after: always;
+            font-family: Arial, sans-serif;
+          ">
+            ${pageSchemas.map(field => {
+              const value = data[field.name];
+              if (value === undefined || value === null) return '';
 
-      // Load existing PDF or create new one
-      if (template.basePdf) {
-        const basePdfBytes = Uint8Array.from(atob(template.basePdf), c => c.charCodeAt(0));
-        pdfDoc = await PDFDocument.load(basePdfBytes);
-      } else {
-        pdfDoc = await PDFDocument.create();
-        // Add pages based on schema structure
-        for (let i = 0; i < template.schemas.length; i++) {
-          pdfDoc.addPage([612, 792]); // Letter size: 8.5" x 11" at 72 DPI
-        }
-      }
+              const fontSize = field.fontSize || 12;
+              const style = `
+                position: absolute;
+                left: ${field.x}px;
+                top: ${field.y}px;
+                width: ${field.width}px;
+                height: ${field.height}px;
+                font-size: ${fontSize}px;
+                font-family: Arial, sans-serif;
+                color: black;
+                overflow: hidden;
+                line-height: 1.2;
+              `;
 
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const pages = pdfDoc.getPages();
+              switch (field.type) {
+                case 'checkbox':
+                  const checkboxSize = Math.min(field.width, field.height);
+                  return `
+                    <div style="${style}">
+                      <div style="
+                        width: ${checkboxSize}px;
+                        height: ${checkboxSize}px;
+                        border: 1px solid black;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: ${fontSize}px;
+                      ">
+                        ${Boolean(value) ? '✓' : ''}
+                      </div>
+                    </div>
+                  `;
 
-      // Process each page
-      template.schemas.forEach((pageSchemas, pageIndex) => {
-        if (pageIndex >= pages.length) return;
-        
-        const page = pages[pageIndex];
-        const { height: pageHeight } = page.getSize();
+                case 'textarea':
+                  const textValue = String(value);
+                  const lines = textValue.split('\n');
+                  return `
+                    <div style="${style} padding: 2px;">
+                      ${lines.map(line => `<div>${line || '&nbsp;'}</div>`).join('')}
+                    </div>
+                  `;
 
-        pageSchemas.forEach(field => {
-          const value = data[field.name];
-          if (value === undefined || value === null) return;
-
-          const fontSize = field.fontSize || 12;
-          // Convert coordinates (PDF coordinates start from bottom-left)
-          const x = field.x;
-          const y = pageHeight - field.y - field.height;
-
-          switch (field.type) {
-            case 'checkbox':
-              if (Boolean(value)) {
-                // Draw a checkmark
-                page.drawText('✓', {
-                  x: x + 2,
-                  y: y + field.height / 2 - fontSize / 2,
-                  size: fontSize,
-                  font,
-                  color: rgb(0, 0, 0),
-                });
+                default:
+                  // Single line text (text, number, email, date)
+                  return `
+                    <div style="${style} padding: 2px; display: flex; align-items: center;">
+                      ${String(value)}
+                    </div>
+                  `;
               }
-              // Draw checkbox border
-              page.drawRectangle({
-                x: x,
-                y: y,
-                width: Math.min(field.width, field.height),
-                height: Math.min(field.width, field.height),
-                borderColor: rgb(0, 0, 0),
-                borderWidth: 1,
-              });
-              break;
-
-            case 'textarea':
-              // Handle multi-line text
-              const textValue = String(value);
-              const lines = textValue.split('\n');
-              const lineHeight = fontSize * 1.2;
-              
-              lines.forEach((line, lineIndex) => {
-                const lineY = y + field.height - (lineIndex + 1) * lineHeight;
-                if (lineY >= y) {
-                  page.drawText(line, {
-                    x: x + 2,
-                    y: lineY,
-                    size: fontSize,
-                    font,
-                    color: rgb(0, 0, 0),
-                    maxWidth: field.width - 4,
-                  });
-                }
-              });
-              break;
-
-            default:
-              // Single line text (text, number, email, date)
-              page.drawText(String(value), {
-                x: x + 2,
-                y: y + field.height / 2 - fontSize / 2,
-                size: fontSize,
-                font,
-                color: rgb(0, 0, 0),
-                maxWidth: field.width - 4,
-              });
-              break;
-          }
-        });
+            }).join('')}
+          </div>
+        `;
+        return pageHTML;
       });
 
-      return await pdfDoc.save();
+      // Combine all pages into one HTML document
+      const fullHTML = `
+        <html>
+          <head>
+            <style>
+              @page { margin: 0; }
+              body { margin: 0; padding: 0; }
+              .pdf-page:last-child { page-break-after: avoid; }
+            </style>
+          </head>
+          <body>
+            ${htmlPages.join('')}
+          </body>
+        </html>
+      `;
+
+      // Create a temporary div to hold the HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = fullHTML;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      try {
+        // Configure html2pdf options
+        const options = {
+          margin: 0,
+          filename: 'form.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            width: 612, // 8.5 inches * 72 DPI
+            height: 792 // 11 inches * 72 DPI
+          },
+          jsPDF: {
+            unit: 'pt',
+            format: 'letter',
+            orientation: 'portrait'
+          }
+        };
+
+        // Generate PDF and get as Uint8Array
+        const pdfBlob = await html2pdf()
+          .set(options)
+          .from(tempDiv)
+          .outputPdf('blob');
+
+        // Convert blob to Uint8Array
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+
+      } finally {
+        // Clean up temporary element
+        document.body.removeChild(tempDiv);
+      }
+
     } catch (err) {
       console.error('PDF generation error:', err);
       throw new Error(`Failed to generate PDF: ${err instanceof Error ? err.message : 'Unknown error'}`);
