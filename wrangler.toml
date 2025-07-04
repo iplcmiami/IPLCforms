@@ -9,7 +9,7 @@ pages_build_output_dir = ".vercel/output/static"
 [[d1_databases]]
 binding = "DB"
 database_name = "iplcforms"
-database_id = "a484d14e-fa44-48b1-a590-bd0b29aaa3593"
+database_id = "a484d14e-fa44-48b1-a590-bd0b29aa3593"
 
 [vars]
 # Environment variables (configure actual values in Cloudflare dashboard)
