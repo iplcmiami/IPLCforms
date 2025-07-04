@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build && npx @cloudflare/next-on-pages",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "build:cloudflare": "npx @cloudflare/next-on-pages",
-    "preview": "npx @cloudflare/next-on-pages && wrangler pages dev",
-    "deploy": "npx @cloudflare/next-on-pages"
+    "preview": "npm run build && npx @cloudflare/next-on-pages && wrangler pages dev",
+    "deploy": "npm run build && npx @cloudflare/next-on-pages"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4",
